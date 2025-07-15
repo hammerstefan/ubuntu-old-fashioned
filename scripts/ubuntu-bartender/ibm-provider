@@ -1,0 +1,62 @@
+script_dir="$(dirname "$(readlink -f "$0")")"
+
+function _wait-instance-connectable() {
+  for attempt in $(seq 12); do
+    if ! ssh $(set-key-opt) "ubuntu@$ip_addr" -- true; then
+      sleep 10
+    else
+      state=connectable
+      break
+    fi
+  done
+
+  if [ "$state" != "connectable" ]; then
+    echo "error: instance not 'connectable' after 2 minutes"
+    exit 255
+  fi
+}
+function build-provider-assert-ready {
+  if [[ ! $VIRTUAL_ENV ]]; then
+    python3 -m venv "$temp_dir/.venv"
+    . "$temp_dir/.venv/bin/activate"
+    pip install -r "$(dirname "$build_provider_config")/requirements.txt"
+  fi
+  python3 "${script_dir}/ibm-provider.py" "" is-ready
+}
+
+function build-provider-destroy {
+  echo "Destroying instance $1 on IBM..."
+  python3 "${script_dir}/ibm-provider.py" "$1" delete
+}
+
+function build-provider-create {
+#  key_dir="$temp_dir/keys"
+#  echo "Generating SSH key in $key_dir"
+#  mkdir "$key_dir"
+#  ssh-keygen -t rsa -f "$temp_dir/keys/ubuntu" -P '' -C 'ubuntu@bartender' &> /dev/null
+#  printf "ubuntu:%s" "$(cat $temp_dir/keys/ubuntu.pub)" > "$temp_dir/keys/metadata"
+  ip_addr=$(python3 "${script_dir}/ibm-provider.py" "$1" launch)
+  _wait-instance-connectable
+}
+
+function build-provider-upload {
+  scp $(set-key-opt) "$2" "ubuntu@$ip_addr:$3"
+}
+
+function build-provider-download {
+  scp $(set-key-opt) "ubuntu@$ip_addr:$2" "$3"
+}
+
+function build-provider-run {
+  args=$(echo -- "$@" | sed 's/.*--//')
+  ssh $(set-key-opt) "ubuntu@$ip_addr" -- $args
+}
+
+function set-key-opt() {
+  export KEY_OPT='-qo StrictHostKeyChecking=no'
+  if [ -f "$temp_dir/keys/ubuntu" ]; then
+    KEY_OPT="$KEY_OPT -i $temp_dir/keys/ubuntu"
+  fi
+
+  echo "$KEY_OPT"
+}

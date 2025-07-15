@@ -114,8 +114,8 @@ AWS_KEYPAIR_NAME=$USER
 AWS_ARM_BUILD=false
 
 # MULTIPASS SPECIFIC DEFAULTS
-MULTIPASS_DISK_SIZE=50G
-MULTIPASS_IMAGE=daily:n # daily image of noble
+MULTIPASS_DISK_SIZE=100G
+MULTIPASS_IMAGE=daily:n # daily image of focal
 # you can optionally override memory cap by setting MULTIPASS_MEM_SIZE
 
 # By default, do not exceed half the total memory or 8GiB (whichever is smaller).
@@ -499,6 +499,8 @@ fi
 
 AWS_AMI_NAME_FILTER="ubuntu/images-testing/hvm-ssd-gp3/ubuntu-noble-daily-${AWS_ARCH}-server-*"
 
+temp_dir=$(mktemp --tmpdir="$TEMP_DIR_LOC" --directory ubuntu-bartender-multipass.XXXXXXXXXX)
+
 # Verify that the specified build provider is available and ready
 
 build_provider_config="$(dirname "$(readlink -f "$0")")/$BUILD_PROVIDER-provider"
@@ -527,14 +529,13 @@ fi
 
 # Let's build all the things!
 
-temp_dir=$(mktemp --tmpdir="$TEMP_DIR_LOC" --directory ubuntu-bartender-multipass.XXXXXXXXXX)
 bartender_name=$(petname)-ubuntu-bartender
 drink_name=${bartender_name/-bartender/-on-the-rocks.tar.gz}
 
 function cleanup {
   echo "Cleaning up..."
+  build-provider-destroy "$bartender_name" || true
   rm -rf $temp_dir
-  build-provider-destroy $bartender_name
 }
 
 if [ "$SHOULD_CLEANUP" = "YES" ]
