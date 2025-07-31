@@ -1,4 +1,6 @@
+set +x
 script_dir="$(dirname "$(readlink -f "$0")")"
+instance_id_file="$temp_dir/ibm-provider-instance-id"
 
 function _wait-instance-connectable() {
   for attempt in $(seq 12); do
@@ -26,7 +28,8 @@ function build-provider-assert-ready {
 
 function build-provider-destroy {
   echo "Destroying instance $1 on IBM..."
-  python3 "${script_dir}/ibm-provider.py" "$1" delete
+  instanceid=$(cat $instance_id_file)
+  python3 "${script_dir}/ibm-provider.py" "$instanceid" delete
 }
 
 function build-provider-create {
@@ -35,7 +38,10 @@ function build-provider-create {
 #  mkdir "$key_dir"
 #  ssh-keygen -t rsa -f "$temp_dir/keys/ubuntu" -P '' -C 'ubuntu@bartender' &> /dev/null
 #  printf "ubuntu:%s" "$(cat $temp_dir/keys/ubuntu.pub)" > "$temp_dir/keys/metadata"
-  ip_addr=$(python3 "${script_dir}/ibm-provider.py" "$1" launch)
+  retval=$(python3 "${script_dir}/ibm-provider.py" "$1" launch)
+  ip_addr=$(echo "$retval" | cut -f1)
+  instanceid=$(echo "$retval" | cut -f2)
+  echo "$instanceid" > $instance_id_file
   _wait-instance-connectable
 }
 

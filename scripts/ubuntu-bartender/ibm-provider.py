@@ -15,23 +15,23 @@ def launch(name):
         instance_type="bx3d-16x80",
         name=name,
     )
-    print(instance._floating_ip["address"])
+    print(f"{instance._floating_ip['address']}\t{instance._instance['id']}")
 
-def delete(name):
+def delete(instance_id):
     ibm = pycloudlib.IBM("bartender")
-    instance = ibm.find_instance(name)
+    instance = ibm.get_instance(instance_id)
     instance.delete(wait=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("name", type=str, help="Name of the IBM cloud instance")
+    parser.add_argument("id", type=str, help="ID of the IBM cloud instance")
     parser.add_argument("operation", type=str, help="Operation to perform")
     args = parser.parse_args()
 
     if args.operation == "launch":
-        launch(args.name)
+        launch(args.id)
     elif args.operation == "delete":
-        delete(args.name)
+        delete(args.id)
     elif args.operation == "is-ready":
         is_ready()
     else:
